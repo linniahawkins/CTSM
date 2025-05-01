@@ -679,6 +679,8 @@ contains
     use shr_const_mod   , only: SHR_CONST_TKFRZ, SHR_CONST_PI
     use clm_varcon      , only: secspday
     use clm_varctl      , only: use_cndv
+    use ftorch          , only: torch_model, torch_model_load, torch_model_forward, &
+                                torch_tensor, torch_tensor_from_array, torch_kCPU, torch_delete
     !
     ! !ARGUMENTS:
     integer                        , intent(in)    :: num_soilp       ! number of soil patches in filter
@@ -697,6 +699,20 @@ contains
     real(r8):: ws_flag        !winter-summer solstice flag (0 or 1)
     real(r8):: crit_onset_gdd !critical onset growing degree-day sum
     real(r8):: soilt
+
+    !LH_mods
+    integer :: in_layout(1) = [1]
+    integer :: out_layout(1) = [1]
+
+    real(r8) :: in_data(1) =1.0
+    real(r8), dimension (1) :: out_data
+
+    type(torch_tensor), dimension(1) :: in_tensor, out_tensor
+
+    character(len=256) :: cb_torch_model = "/glade/u/home/linnia/FTorch_example/constant_model.pt"
+    type(torch_model)  :: model_pytorch
+    ! end LH_mods
+
     !-----------------------------------------------------------------------
 
     associate(                                                                                                   & 
@@ -780,6 +796,17 @@ contains
          livecrootn_storage_to_xfer          =>    cnveg_nitrogenflux_inst%livecrootn_storage_to_xfer_patch    , & ! Output:  [real(r8) (:)   ]                                                    
          deadcrootn_storage_to_xfer          =>    cnveg_nitrogenflux_inst%deadcrootn_storage_to_xfer_patch      & ! Output:  [real(r8) (:)   ]                                                    
          )
+
+
+      ! LH_mods
+     
+      call torch_model_load(model_pytorch, trim(cb_torch_model), torch_kCPU)
+      
+      call torch_tensor_from_array(in_tensor(1), in_data, in_layout, torch_kCPU)
+      call torch_tensor_from_array(out_tensor(1), out_data, out_layout, torch_kCPU)
+      call torch_model_forward(model_pytorch, in_tensor, out_tensor)
+
+      ! end LH_mods
 
       ! start patch loop
       do fp = 1,num_soilp
