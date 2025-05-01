@@ -703,13 +703,14 @@ contains
     !LH_mods
     integer :: in_layout(1) = [1]
     integer :: out_layout(1) = [1]
+    integer :: ftorch_check
 
-    real(r8) :: in_data(1) =1.0
-    real(r8), dimension (1) :: out_data
+    real(r8), dimension(5) :: in_data
+    real(r8), dimension(5) :: out_data
 
     type(torch_tensor), dimension(1) :: in_tensor, out_tensor
 
-    character(len=256) :: cb_torch_model = "/glade/u/home/linnia/FTorch_example/constant_model.pt"
+    character(len=256) :: nn_torch_model = "/glade/u/home/linnia/FTorch_example/saved_simplenet_model_v3.pt"
     type(torch_model)  :: model_pytorch
     ! end LH_mods
 
@@ -800,13 +801,25 @@ contains
 
       ! LH_mods
      
-      call torch_model_load(model_pytorch, trim(cb_torch_model), torch_kCPU)
+      call torch_model_load(model_pytorch, trim(nn_torch_model), torch_kCPU)
       
+      in_data = [0._r8,1._r8,2._r8,3._r8,4._r8]
       call torch_tensor_from_array(in_tensor(1), in_data, in_layout, torch_kCPU)
       call torch_tensor_from_array(out_tensor(1), out_data, out_layout, torch_kCPU)
       call torch_model_forward(model_pytorch, in_tensor, out_tensor)
 
+      ! check (neural net just multiplies in_data by 2.0)
+      if (all(abs(out_data - (in_data*2._r8)) < 1.0e-6_r8)) then
+             ftorch_check = 1
+      else
+             ftorch_check = 0
+      end if
+
+      call torch_delete(in_tensor(1))
+      call torch_delete(out_tensor(1))
+
       ! end LH_mods
+
 
       ! start patch loop
       do fp = 1,num_soilp
